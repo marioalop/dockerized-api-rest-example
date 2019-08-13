@@ -1,0 +1,69 @@
+version: '2'
+
+services:
+
+  nginx:
+    build: ./nginx/
+    ports:
+      - "80:8080"
+    volumes:
+      - /www/static
+    volumes_from:
+      - apirest
+    links:
+      - apirest:apirest
+    logging:
+          driver: 'json-file'
+          options:
+            max-size: '10m'
+            max-file: '3'
+    restart: always
+
+  redis:
+    restart: always
+    image: 'redis:alpine'
+    ports:
+      - '6379'
+
+  postgresql:
+    restart: always
+    image: sameersbn/postgresql:9.6-2
+    ports:
+      - "5432"
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    volumes:
+      - ./srv/docker/postgresql:/var/lib/postgresql
+
+  apirest:
+    restart: always
+    build:
+     context: ./api/
+    ports:
+      - "8000"
+    environment:
+      ENV: PROD
+      SQL_HOST: postgresql
+      SQL_NAME: ${DB_NAME}
+      SQL_USER: ${DB_USER}
+      SQL_PASSWORD: ${DB_PASS}
+      SQL_PORT: 5432
+      REDIS_URL: redis
+      REDIS_PORT: 6379
+      DJANGO_ADMIN_USER: ${DJANGO_ADMIN_USER}
+      DJANGO_ADMIN_PASSWORD: ${DJANGO_ADMIN_PASSWORD}
+      DJANGO_ADMIN_MAIL: ${DJANGO_ADMIN_MAIL}
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - /src
+      - /src/static
+    logging:
+          driver: 'json-file'
+          options:
+            max-size: '10m'
+            max-file: '3'
+    links:
+        - postgresql
+        - redis
